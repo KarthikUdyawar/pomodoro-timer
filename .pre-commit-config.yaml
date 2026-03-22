@@ -65,7 +65,7 @@ repos:
     rev: 1.9.4
     hooks:
       - id: bandit
-        args: [--format=screen, --quiet, -s=B101, B113]
+        args: [--format=screen, --quiet, "-s=B101,B113"]
 
   - repo: https://github.com/gitleaks/gitleaks
     rev: v8.30.0
