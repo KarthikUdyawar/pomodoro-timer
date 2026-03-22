@@ -1,0 +1,261 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+#
+# CodeRabbit Configuration — 🍅 Pomodoro Timer
+# Docs: https://docs.coderabbit.ai/configure-coderabbit/
+#
+# Philosophy:
+#   This is a single-file Streamlit app. Keep reviews focused and pragmatic.
+#   pre-commit handles → formatting, linting, types, secrets, whitespace
+#   CodeRabbit handles → logic correctness, timing bugs, state management, UX regressions
+
+language: en-US
+early_access: false
+
+# ── Review Settings ──────────────────────────────────────────────────────────
+reviews:
+  profile: chill                        # Suggestions only, never blocking
+  request_changes_workflow: false       # Never block merges
+
+  high_level_summary: true
+  high_level_summary_placeholder: "@coderabbitai summary"
+  poem: false
+  collapse_walkthrough: true
+  review_status: true
+  sequence_diagrams: false              # Not useful for a single-file UI app
+  abort_on_close: true
+
+  # ── Labels ───────────────────────────────────────────────────────────────
+  suggested_labels: true
+  auto_apply_labels: true
+
+  labeling_instructions:
+
+    # Area
+    - label: "area:timer-logic"
+      instructions: >
+        Apply when the PR changes timing, session state, cycle management,
+        or any logic in the wall-clock delta / rerun loop.
+
+    - label: "area:ui"
+      instructions: >
+        Apply when the PR changes the Streamlit UI — layout, widgets,
+        mode buttons, progress bar, cycle dots, stats display, or settings panel.
+
+    - label: "area:audio"
+      instructions: >
+        Apply when the PR changes alarm loading, base64 encoding,
+        or the injected <audio> element.
+
+    - label: "area:infra"
+      instructions: >
+        Apply when the PR changes Dockerfile, docker-compose.yml,
+        pyproject.toml, uv.lock, or CI workflows.
+
+    - label: "area:docs"
+      instructions: >
+        Apply when the PR changes README.md, docstrings, or any
+        other documentation file.
+
+    - label: "area:config"
+      instructions: >
+        Apply when the PR changes .coderabbit.yaml, .pre-commit-config.yaml,
+        pyproject.toml, or any other project config file.
+
+    # Type
+    - label: "type:feature"
+      instructions: >
+        Apply when the PR introduces new functionality that did not exist before —
+        e.g. new timer mode, keyboard shortcuts, themes, notification support.
+
+    - label: "type:bug"
+      instructions: >
+        Apply when the PR fixes a defect — incorrect timing, wrong cycle order,
+        broken progress bar, audio not playing, state not resetting correctly.
+
+    - label: "type:refactor"
+      instructions: >
+        Apply when the PR restructures code without changing behaviour —
+        extracting helpers, renaming, reorganising session state defaults.
+
+    - label: "type:chore"
+      instructions: >
+        Apply when the PR is maintenance with no user-facing impact —
+        dependency bumps, lock file updates, comment cleanup.
+
+    - label: "type:hotfix"
+      instructions: >
+        Apply when the PR is an urgent fix targeting main directly —
+        e.g. crash on startup, timer never stopping, alarm FileNotFoundError.
+
+    # Risk
+    - label: "risk:breaking-change"
+      instructions: >
+        Apply when the PR renames or removes session_state keys (breaks existing
+        browser sessions), changes the cycle logic in a backwards-incompatible
+        way, or changes the alarm file path contract.
+
+    - label: "risk:needs-review"
+      instructions: >
+        Apply when the PR touches timing accuracy, cycle advancement logic,
+        auto-start behaviour, or the audio injection mechanism.
+
+    - label: "risk:safe"
+      instructions: >
+        Apply when the PR is isolated to docs, README, Docker config,
+        or purely cosmetic UI copy changes.
+
+    # Size
+    - label: "size:small"
+      instructions: >
+        Apply when the PR changes fewer than 50 lines (excluding uv.lock).
+
+    - label: "size:medium"
+      instructions: >
+        Apply when the PR changes 50–200 lines (excluding uv.lock).
+
+    - label: "size:large"
+      instructions: >
+        Apply when the PR changes more than 200 lines (excluding uv.lock).
+
+    # Status
+    - label: "status:wip"
+      instructions: >
+        Apply when the PR title contains WIP, the PR is a draft, or the
+        description states the work is not yet complete.
+
+    - label: "status:ready"
+      instructions: >
+        Apply when the PR is not a draft and the description states it is
+        ready for review.
+
+    # Priority
+    - label: "priority:low"
+      instructions: >
+        Apply when the PR is a nice-to-have with no urgency — cosmetic
+        tweaks, optional features, doc improvements.
+
+    - label: "priority:medium"
+      instructions: >
+        Apply when the PR is planned work to be merged this sprint.
+
+    - label: "priority:high"
+      instructions: >
+        Apply when the PR fixes an important bug or unblocks other work.
+
+    - label: "priority:critical"
+      instructions: >
+        Apply when the PR fixes a crash, startup failure, or broken core
+        timer behaviour that must be merged immediately.
+
+  # ── Auto-review behaviour ─────────────────────────────────────────────────
+  auto_review:
+    enabled: true
+    drafts: false
+    auto_incremental_review: true
+    base_branches:
+      - main
+      - develop
+      - "release/*"
+
+  # ── Path-based review instructions ───────────────────────────────────────
+  path_instructions:
+
+    # Main app — the only source file
+    - path: "main.py"
+      instructions: |
+        This is a single-file Streamlit Pomodoro timer. Focus on:
+
+        TIMING CORRECTNESS
+        - Wall-clock delta timing: `dt = time.time() - ss.last_tick` must be
+          used, never a fixed subtraction. Flag any regression to sleep-based timing.
+        - `ss.remaining` must be clamped with `max(0.0, ...)` after subtraction.
+        - `st.progress()` value must be clamped to [0.0, 1.0] before the call.
+        - `total_focus` must only accumulate when `ss.remaining > 0`.
+
+        CYCLE LOGIC
+        - Correct order: Focus × 4 → Long Break, not Focus × 3.
+        - `next_mode_after_focus()` must be called AFTER `sessions_in_cycle`
+          is incremented, not before.
+        - `sessions_in_cycle` wrapping back to 0 means Long Break is due.
+
+        SESSION STATE
+        - New session_state keys added without a default in `_init_state()`
+          will raise AttributeError on first load — flag any missing defaults.
+        - Renaming or removing existing keys is a breaking change for users
+          with live browser sessions.
+
+        AUTO-START
+        - When `auto_start` is True, `ss.running = True` and `ss.last_tick`
+          must both be set in the same block after mode transition.
+
+        AUDIO
+        - `load_alarm()` must be decorated with `@st.cache_resource` so the
+          file is read only once per process.
+        - The injected `<audio>` element must have `autoplay` and
+          `style="display:none"` — flag if either is missing.
+        - `play_sound` must be reset to False at the top of each rerun before
+          the timing block runs.
+
+        SETTINGS
+        - Slider/toggle widgets in the Settings expander write directly to
+          `ss.*` — ensure Apply button also resets `ss.remaining` and stops
+          the timer so settings take effect immediately.
+
+    # Dockerfile
+    - path: "Dockerfile"
+      instructions: |
+        Focus on:
+        - Base image should be pinned to a specific version (e.g. python:3.12-slim)
+        - alarm.mp3 must be copied into the image alongside main.py
+        - HEALTHCHECK must be present
+        - App should not run as root if avoidable
+        - No secrets or credentials in ENV or RUN steps
+
+    # Docker Compose
+    - path: "docker-compose.yml"
+      instructions: |
+        Focus on:
+        - Port mapping must expose 8501
+        - No hardcoded secrets — use environment variables
+        - Consider adding a healthcheck condition if a depends_on is added
+
+    # Dependencies
+    - path: "pyproject.toml"
+      instructions: |
+        Focus on:
+        - `streamlit` version constraint must be >= 1.35.0 (minimum for
+          st.query_params and st.cache_resource used in the app)
+        - Python version constraint must be >= 3.11
+        - No unnecessary dependencies added
+
+    # README
+    - path: "README.md"
+      instructions: |
+        Focus on:
+        - Run commands must match the actual project setup (uv, pip, Docker)
+        - alarm.mp3 filename must match ALARM_PATH constant in main.py
+        - Screenshot reference path must match the actual file in the repo
+        - Cycle diagram must match the LONG_EVERY constant (default 4)
+        - Any documented default durations must match _init_state() defaults
+
+    # CI workflows
+    - path: ".github/workflows/**"
+      instructions: |
+        Focus on:
+        - Secrets exposed in run: steps
+        - Missing permissions restrictions
+        - Actions not pinned to a SHA or specific version tag
+        - Ensure alarm.mp3 is present in the test environment if the app is
+          started as part of a smoke test
+
+  # ── Ignored paths — never comment on these ───────────────────────────────
+  path_filters:
+    - "!uv.lock"
+    - "!**/__pycache__/**"
+    - "!*.pyc"
+    - "!screenshot.png"
+    - "!alarm.mp3"
+
+# ── Chat ─────────────────────────────────────────────────────────────────────
+chat:
+  auto_reply: true
