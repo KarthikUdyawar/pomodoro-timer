@@ -2,26 +2,6 @@
 🍅 Pomodoro Timer
 =================
 A simple, distraction-free Pomodoro timer built with Streamlit.
-
-Pomodoro cycle
---------------
-Focus → Short Break → Focus → Short Break → Focus → Short Break → Focus → Long Break → repeat
-  1           1         2           2         3           3         4           ↑
-                                                                        every 4th focus
-
-Usage
------
-    streamlit run main.py
-
-Requirements
-------------
-- Python >= 3.11
-- streamlit >= 1.35.0
-- alarm.mp3  (audio file in the same directory)
-
-Author
-------
-Open-source — contributions welcome.
 """
 
 import base64
@@ -101,7 +81,7 @@ def _init_state() -> None:
         running=False,  # Whether the timer is actively counting down
         remaining=25.0 * 60,  # Seconds left in the current session
         sessions=0,  # Total completed Focus sessions (all-time)
-        sessions_in_cycle=0,  # Completed Focus sessions in the current cycle (0–3)
+        sessions_in_cycle=0,  # Completed Focus sessions in the current cycle (0-3)
         total_focus=0.0,  # Cumulative seconds spent in Focus mode
         last_tick=None,  # Wall-clock time of the previous rerun (float | None)
         dur_focus=25,  # User-configured Focus duration in minutes
